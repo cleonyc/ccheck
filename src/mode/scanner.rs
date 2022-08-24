@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use anyhow::bail;
-use craftping::{tokio::ping, Response};
+use craftping::{tokio::ping};
 use kdam::{prelude::BarMethods, tqdm, Bar};
 use owo_colors::OwoColorize;
-use std::{fmt::Display, net::IpAddr, sync::Arc, time::Duration, panic};
+use std::{fmt::Display, net::IpAddr, sync::Arc, time::Duration};
 use time::OffsetDateTime;
 use tokio::{
     net::TcpStream,
-    sync::{mpsc::Sender, RwLock},
+    sync::{RwLock},
 };
 
 use crate::{adapters::CCheckResponse, condition::Conditions, format::ccheck::Server};
@@ -42,10 +42,6 @@ impl Display for ScannerError {
             ScannerError::EmptyAddrs => write!(f, "Empty Address buffer!"),
         }
     }
-}
-struct ServerInfo {
-    version: String,
-    address: IpAddr,
 }
 impl Scanner {
     async fn ping(&self, pb: Arc<RwLock<Bar>>) -> anyhow::Result<(CCheckResponse, Server)> {

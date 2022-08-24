@@ -20,7 +20,7 @@ use std::panic;
 use std::time::Duration as StdDuration;
 use std::{net::IpAddr, sync::Arc};
 use tokio::{net::TcpStream, sync::RwLock};
-use webhook::{client::WebhookClient, models::Webhook};
+use webhook::{client::WebhookClient};
 
 use crate::{adapters::CCheckResponse, condition::Conditions, format::ccheck::Server};
 
