@@ -42,4 +42,4 @@ GNU General Public License for more details.
 
 # Credits 
 
-See `CREDITS`
+See [credits](CREDITS)
