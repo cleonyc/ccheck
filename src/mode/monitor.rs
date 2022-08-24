@@ -19,7 +19,6 @@ use spinoff::{Color, Spinner, Spinners};
 use std::panic;
 use std::time::Duration as StdDuration;
 use std::{net::IpAddr, sync::Arc};
-use time::OffsetDateTime;
 use tokio::{net::TcpStream, sync::RwLock};
 use webhook::{client::WebhookClient, models::Webhook};
 
