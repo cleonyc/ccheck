@@ -1,3 +1,6 @@
+# 0.2.2
+- 1mb != 1gb
+
 # 0.2.1
 - hotfix - 0.2.0 broke json output
 

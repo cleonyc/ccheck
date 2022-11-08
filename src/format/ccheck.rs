@@ -110,7 +110,7 @@ impl CCheckFileHandler {
     }
     pub async fn write_resp(&mut self, resp: CCheckResponse) -> anyhow::Result<()> {
         if self.writer.is_none() {
-            self.writer = Some(BufWriter::with_capacity(1024 * 1000 * 1000, self.file.try_clone()?))
+            self.writer = Some(BufWriter::with_capacity(1024 * 1000, self.file.try_clone()?))
         }
         if self.count != 0 {
             self.writer.as_mut().unwrap().write_all(b",")?;
