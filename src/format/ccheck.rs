@@ -95,26 +95,38 @@ impl From<CCheckPlayer> for Player {
     }
 }
 pub struct CCheckFileHandler {
-    pub writer: BufWriter<File>,
+    pub path: PathBuf,
+    pub file: File,
     pub count: usize,
+    pub writer: Option<BufWriter<File>>
 }
 impl CCheckFileHandler {
     pub async fn new(path: PathBuf) -> anyhow::Result<Self> {
-        let file = File::create(path)?;
+        let mut file = File::create(path.clone())?;
         // i've heard a 1mb buffer makes io go vrooom
-        let mut writer = BufWriter::with_capacity(1024 * 1000 * 1000, file);
-        writer.write_all(b"[")?;
-        Ok(Self { writer, count: 0 })
+        file.write_all(b"[")?;
+        file.flush()?;
+        Ok(Self { file, count: 0, writer: None , path})
     }
     pub async fn write_resp(&mut self, resp: CCheckResponse) -> anyhow::Result<()> {
-        self.writer
-            .write_all(serde_json::to_vec(&resp)?.as_slice())?;
+        if self.writer.is_none() {
+            self.writer = Some(BufWriter::with_capacity(1024 * 1000 * 1000, self.file.try_clone()?))
+        }
+        if self.count != 0 {
+            self.writer.as_mut().unwrap().write_all(b",")?;
+        }
+
+        self.writer.as_mut().unwrap().write_all(serde_json::to_vec(&resp)?.as_slice())?;
+
         self.count += 1;
         Ok(())
     }
     pub async fn done(&mut self) -> anyhow::Result<()> {
-        self.writer.write_all(b"]")?;
-        self.writer.flush()?;
+        if let Some(writer) = self.writer.as_mut() {
+            writer.flush()?;
+        }
+        self.file.write_all(b"]")?;
+        self.file.flush()?;
         Ok(())
     }
 }
