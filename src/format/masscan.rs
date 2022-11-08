@@ -31,7 +31,7 @@ impl MasscanFormat {
             .map(|s| {
                 (
                     s.ip.clone().parse::<IpAddr>().expect("bad ip"),
-                    s.ports[0].port.clone(),
+                    s.ports[0].port,
                 )
             })
             .collect()

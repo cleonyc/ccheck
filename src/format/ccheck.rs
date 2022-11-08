@@ -13,12 +13,17 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use std::{net::IpAddr, path::PathBuf, io::{BufWriter, Write, BufReader, Read}, fs::File};
+use std::{
+    fs::File,
+    io::{BufReader, BufWriter, Read, Write},
+    net::IpAddr,
+    path::PathBuf,
+};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
-use crate::adapters::{CCheckChat, CCheckResponse, CCheckPlayer};
+use crate::adapters::{CCheckComponent, CCheckPlayer, CCheckResponse};
 
 pub struct CCheckFormat {
     pub servers: Vec<Server>,
@@ -53,18 +58,23 @@ pub struct Server {
     pub ip: (IpAddr, u16),
     players: Vec<Player>,
     favicon: String,
-    motd: CCheckChat
+    motd: CCheckComponent,
 }
 impl Server {
     pub fn from_resp(resp: CCheckResponse, ip: (IpAddr, u16)) -> Self {
-        let players = resp.sample.unwrap_or(vec!()).iter().map(|p| p.clone().into()).collect();
+        let players = resp
+            .sample
+            .unwrap_or_default()
+            .iter()
+            .map(|p| p.clone().into())
+            .collect();
         let motd = resp.description;
         Server {
             version: resp.version,
             protocol: resp.protocol as usize,
             ip,
             players,
-            favicon: base64::encode(resp.favicon.unwrap_or(b"".to_vec())),
+            favicon: base64::encode(resp.favicon.unwrap_or_else(|| b"".to_vec())),
             motd,
         }
     }
@@ -82,5 +92,29 @@ impl From<CCheckPlayer> for Player {
             username: p.name,
             uuid: p.id,
         }
+    }
+}
+pub struct CCheckFileHandler {
+    pub writer: BufWriter<File>,
+    pub count: usize,
+}
+impl CCheckFileHandler {
+    pub async fn new(path: PathBuf) -> anyhow::Result<Self> {
+        let file = File::create(path)?;
+        // i've heard a 1mb buffer makes io go vrooom
+        let mut writer = BufWriter::with_capacity(1024 * 1000 * 1000, file);
+        writer.write_all(b"[")?;
+        Ok(Self { writer, count: 0 })
+    }
+    pub async fn write_resp(&mut self, resp: CCheckResponse) -> anyhow::Result<()> {
+        self.writer
+            .write_all(serde_json::to_vec(&resp)?.as_slice())?;
+        self.count += 1;
+        Ok(())
+    }
+    pub async fn done(&mut self) -> anyhow::Result<()> {
+        self.writer.write_all(b"]")?;
+        self.writer.flush()?;
+        Ok(())
     }
 }

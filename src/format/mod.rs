@@ -13,15 +13,15 @@
 
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use strum_macros::EnumString;
 
-pub mod masscan;
 pub mod ccheck;
+pub mod masscan;
 #[derive(Serialize, Deserialize, Clone, EnumString)]
 pub enum Format {
     Masscan,
-    CCheck
+    CCheck,
 }
 // #[derive(Serialize, Deserialize, Clone, EnumString)]
 // pub enum Ouput {

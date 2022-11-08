@@ -15,15 +15,14 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 use std::{net::IpAddr, sync::Arc};
 
-use time::{Duration, OffsetDateTime};
-use tokio::sync::RwLock;
 use std::time::Duration as StdDuration;
+use tokio::sync::RwLock;
 
+use crate::format::ccheck::CCheckFileHandler;
 use crate::{
     condition::Conditions,
-    mode::{scanner::Scanner, Mode, monitor::Monitor}, format::ccheck::CCheckFormat,
+    mode::{monitor::Monitor, scanner::Scanner, Mode},
 };
-pub mod toml;
 pub struct Config {
     pub mode: Mode,
     pub addrs: Vec<(IpAddr, u16)>,
@@ -33,27 +32,25 @@ pub struct Config {
 impl Config {
     pub async fn run(&self) -> anyhow::Result<()> {
         match &self.mode {
-            Mode::Scanner { rate, output } => {
-                let now = OffsetDateTime::now_utc();
-                let start = (now
-                    .replace_nanosecond(0)?
-                    .replace_microsecond(0)?
-                    .replace_millisecond(0)?
-                    + Duration::seconds(1))
-                .unix_timestamp_nanos()
-                    / 1_000_000;
+            Mode::Scanner {
+                workers,
+                output,
+                progress_bar,
+            } => {
                 let scanner = Scanner {
                     timeout: self.timeout,
                     addrs: Arc::new(RwLock::new(self.addrs.clone())),
                     conditions: self.conditions.clone(),
+                    progress_bar: *progress_bar,
                 };
-                let svs = scanner
-                    .run(1_000_000 / rate, start as usize)
-                    .await?;
-                let format = CCheckFormat::new(svs);
-                format.save(output.clone())?;
+                let file_handler = CCheckFileHandler::new(output.to_path_buf()).await?;
+                scanner.run(*workers, file_handler).await?;
             }
-            Mode::Monitor { rate, webhook_url, exit_on_success } => {
+            Mode::Monitor {
+                workers: rate,
+                webhook_url,
+                exit_on_success,
+            } => {
                 let monitor = Monitor {
                     rate: *rate,
                     timeout: self.timeout,

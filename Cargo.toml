@@ -1,6 +1,6 @@
 [package]
-name = "c_check"
-version = "0.1.0"
+name = "ccheck"
+version = "0.2.0"
 edition = "2021"
 description = "Fast minecraft scanner"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -11,21 +11,17 @@ serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 clap = { version = "3.2.15", features = ["derive"] }
 anyhow = "1.0.58"
-# p̶r̶e̶t̶t̶y̶ ̶w̶e̶l̶l̶ very high speed with dubios code quality-written crate for pinging servers and parsing response
 craftping = {version = "0.3.0", features = ["async-tokio"]}
-time = "0.3.11"
 regex = "1"
 base64 = "0.13.0"
-async-trait = "0.1.57"
-toml_edit = {version = "0.14.4"}
 strum = "0.24"
 strum_macros = "0.24"
 uuid = "*"
-kdam = "0.2.2"
+kdam = {version = "0.2.2", features = ["gradient"]}
 owo-colors = "3"
 webhook = "2.0.0"
 spinoff = "0.5.3"
-
+time = "0.3.17"
 
 [profile.release]
 lto = true

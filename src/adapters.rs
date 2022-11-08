@@ -44,13 +44,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-use craftping::{Chat, Player, Response};
+use craftping::{Chat as CraftPingChat, Player as CraftPingPlayer, Response as CraftPingResponse};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize)]
 /// A ping response returned from server.
 pub struct CCheckResponse {
-    
     /// The version name of the server.
     pub version: String,
     /// The protocol number of the server.
@@ -65,7 +64,7 @@ pub struct CCheckResponse {
     pub sample: Option<Vec<CCheckPlayer>>,
     /// The description (aka MOTD) of the server.
     /// See also [the minecraft protocol wiki](https://wiki.vg/Chat#Current_system_.28JSON_Chat.29) for the [`Chat`](Chat) format.
-    pub description: CCheckChat,
+    pub description: CCheckComponent,
     /// The favicon of the server in PNG format.
     pub favicon: Option<Vec<u8>>,
     // Disabled for now. Not currently interested in adding support for checking for forge protocol info
@@ -80,8 +79,8 @@ pub struct CCheckResponse {
     // for the [`ForgeData`](ForgeData) format.
     // pub forge_data: Option<CCheckForgeData>,
 }
-impl From<Response> for CCheckResponse {
-    fn from(res: Response) -> Self {
+impl From<CraftPingResponse> for CCheckResponse {
+    fn from(res: CraftPingResponse) -> Self {
         let mut new_sample: Vec<CCheckPlayer> = vec![];
         if let Some(sample) = res.sample {
             for player in sample {
@@ -89,13 +88,13 @@ impl From<Response> for CCheckResponse {
             }
         }
 
-        return CCheckResponse {
+        CCheckResponse {
             version: res.version,
             protocol: res.protocol,
             max_players: res.max_players,
             online_players: res.online_players,
             sample: {
-                if new_sample.len() != 0 {
+                if !new_sample.is_empty() {
                     Some(new_sample)
                 } else {
                     None
@@ -103,7 +102,7 @@ impl From<Response> for CCheckResponse {
             },
             description: res.description.into(),
             favicon: res.favicon,
-        };
+        }
     }
 }
 
@@ -116,12 +115,12 @@ pub struct CCheckPlayer {
     /// Normally used to identify a player.
     pub id: String,
 }
-impl From<Player> for CCheckPlayer {
-    fn from(p: Player) -> Self {
-        return Self {
+impl From<CraftPingPlayer> for CCheckPlayer {
+    fn from(p: CraftPingPlayer) -> Self {
+        Self {
             name: p.name,
             id: p.id,
-        };
+        }
     }
 }
 
@@ -129,7 +128,7 @@ impl From<Player> for CCheckPlayer {
 /// The chat component used in the server description.
 ///
 /// See also [the minecraft protocol wiki](https://wiki.vg/Chat#Current_system_.28JSON_Chat.29).
-pub struct CCheckChat {
+pub struct CCheckComponent {
     /// The text which this `Chat` object holds.
     pub text: String,
     #[serde(default)]
@@ -153,11 +152,11 @@ pub struct CCheckChat {
     #[serde(default)]
     /// The extra text components following this text.
     /// They should inherit this chat component's properties (bold, italic, etc.) but can also override the properties.
-    pub extra: Vec<CCheckChat>,
+    pub extra: Vec<CCheckComponent>,
 }
-impl From<Chat> for CCheckChat {
-    fn from(chat: Chat) -> Self {
-        let mut new_extra: Vec<CCheckChat> = vec![];
+impl From<CraftPingChat> for CCheckComponent {
+    fn from(chat: CraftPingChat) -> Self {
+        let mut new_extra: Vec<CCheckComponent> = vec![];
         for chat in chat.extra {
             new_extra.push(chat.into())
         }

@@ -21,6 +21,14 @@ pub mod monitor;
 pub mod scanner;
 #[derive(Serialize, Deserialize, Clone)]
 pub enum Mode {
-    Scanner { rate: usize, output: PathBuf },
-    Monitor { rate: usize, webhook_url: Option<String>, exit_on_success: bool },
+    Scanner {
+        workers: usize,
+        output: PathBuf,
+        progress_bar: bool,
+    },
+    Monitor {
+        workers: usize,
+        webhook_url: Option<String>,
+        exit_on_success: bool,
+    },
 }

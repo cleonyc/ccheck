@@ -30,7 +30,7 @@ impl Conditions {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 #[derive(Debug, Clone)]
@@ -91,15 +91,14 @@ impl Condition {
                 }
             }
             Actor::Favicon => {
-                if self
-                    .values
-                    .contains(&base64::encode(resp.favicon.unwrap_or(b"".to_vec())))
-                {
+                if self.values.contains(&base64::encode(
+                    resp.favicon.unwrap_or_else(|| b"".to_vec()),
+                )) {
                     return !is_match;
                 }
             }
             Actor::PlayerName => {
-                for p in &resp.sample.unwrap_or(vec!()) {
+                for p in &resp.sample.unwrap_or_default() {
                     if self.check_regex_match(&p.name) {
                         return !is_match;
                     }
@@ -107,9 +106,9 @@ impl Condition {
                         return !is_match;
                     }
                 }
-            },
+            }
             Actor::PlayerUuid => {
-                for p in &resp.sample.unwrap_or(vec!()) {
+                for p in &resp.sample.unwrap_or_default() {
                     if self.check_regex_match(&p.id) {
                         return !is_match;
                     }
@@ -117,15 +116,12 @@ impl Condition {
                         return !is_match;
                     }
                 }
-            },
+            }
         }
-        return is_match;
+        is_match
     }
-    fn check_regex_match(&self, str: &String) -> bool {
-        self.values_regex
-            .iter()
-            .find(|&r| r.is_match(str))
-            .is_some()
+    fn check_regex_match(&self, str: &str) -> bool {
+        self.values_regex.iter().any(|r| r.is_match(str))
     }
 }
 #[derive(Debug, Clone, Deserialize, Serialize)]

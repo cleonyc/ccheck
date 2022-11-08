@@ -22,16 +22,16 @@ use regex::Regex;
 
 use crate::{
     condition::{Actor, Condition, ConditionType, Conditions},
-    config::{toml::TomlFormat, Config},
+    config::Config,
     format::masscan::MasscanFormat,
     mode::Mode,
 };
 
-mod adapters;
-mod condition;
-mod config;
-mod format;
-mod mode;
+pub mod adapters;
+pub mod condition;
+pub mod config;
+pub mod format;
+pub mod mode;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 struct Args {
@@ -48,10 +48,9 @@ enum Command {
         /// JSON file outputed by `masscan`
         #[clap(value_parser)]
         input: PathBuf,
-
-        /// Number of servers to scan per second
+        /// Number of async tasks to scan with.
         #[clap(short, long, value_parser, default_value_t = 30)]
-        rate: usize,
+        workers: usize,
         /// Formatted output file
         #[clap(value_parser)]
         output: PathBuf,
@@ -59,6 +58,10 @@ enum Command {
         /// Default: 1000
         #[clap(short, long, value_parser, default_value_t = 1000)]
         timeout: u64,
+
+        /// Use progress bar: slows down by a decent bit but has pretty output
+        #[clap(short, long, value_parser, default_value_t = false)]
+        progress_bar: bool,
         /// conditions to filter out servers
         /// format: `<actor>:<value>,<actor>:<value>`
         /// supported actors: `PlayerName, PlayerUuid, Version, Protocol, ConnectedPlayers, MaxPlayers, Description, Favicon (base64 encoded)`
@@ -86,9 +89,9 @@ enum Command {
         #[clap(value_parser)]
         input: PathBuf,
 
-        /// Number of servers to scan per second
+        /// Number of async tasks to scan with.
         #[clap(short, long, value_parser, default_value_t = 30)]
-        rate: usize,
+        workers: usize,
         /// Timeout for each server in milliseconds
         #[clap(short, long, value_parser, default_value_t = 1000)]
         timeout: u64,
@@ -128,7 +131,7 @@ async fn main() -> anyhow::Result<()> {
         Some(command) => match command {
             Command::Monitor {
                 input,
-                rate,
+                workers,
                 timeout,
                 exclude,
                 exclude_regex,
@@ -138,7 +141,7 @@ async fn main() -> anyhow::Result<()> {
                 dont_exit_on_success,
             } => {
                 let mut conds = vec![];
-                for i in exclude.unwrap_or(vec![]) {
+                for i in exclude.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![vals[1].to_string()],
@@ -147,7 +150,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in include.unwrap_or(vec![]) {
+                for i in include.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![vals[1].to_string()],
@@ -156,7 +159,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in exclude_regex.unwrap_or(vec![]) {
+                for i in exclude_regex.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![],
@@ -165,7 +168,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in include_regex.unwrap_or(vec![]) {
+                for i in include_regex.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![],
@@ -177,7 +180,9 @@ async fn main() -> anyhow::Result<()> {
                 let conds = Conditions { conditions: conds };
                 let cnf = Config {
                     addrs: {
-                        if let Ok(mformat) = MasscanFormat::try_from(File::open(input.clone()).expect("invalid input file")) {
+                        if let Ok(mformat) = MasscanFormat::try_from(
+                            File::open(input.clone()).expect("invalid input file"),
+                        ) {
                             mformat.get_ips()
                         } else {
                             CCheckFormat::try_from(File::open(input).expect("invalid input file"))
@@ -189,7 +194,7 @@ async fn main() -> anyhow::Result<()> {
                         }
                     },
                     mode: Mode::Monitor {
-                        rate,
+                        workers,
                         webhook_url,
                         exit_on_success: !dont_exit_on_success,
                     },
@@ -201,15 +206,16 @@ async fn main() -> anyhow::Result<()> {
             Command::Scan {
                 timeout,
                 input,
-                rate,
+                workers,
                 output,
                 exclude,
                 exclude_regex,
                 include_regex,
                 include,
+                progress_bar,
             } => {
                 let mut conds = vec![];
-                for i in exclude.unwrap_or(vec![]) {
+                for i in exclude.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![vals[1].to_string()],
@@ -218,7 +224,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in include.unwrap_or(vec![]) {
+                for i in include.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![vals[1].to_string()],
@@ -227,7 +233,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in exclude_regex.unwrap_or(vec![]) {
+                for i in exclude_regex.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![],
@@ -236,7 +242,7 @@ async fn main() -> anyhow::Result<()> {
                         actor: Actor::from_str(vals[0])?,
                     });
                 }
-                for i in include_regex.unwrap_or(vec![]) {
+                for i in include_regex.unwrap_or_default() {
                     let vals = i.split(':').collect::<Vec<&str>>();
                     conds.push(Condition {
                         values: vec![],
@@ -248,7 +254,11 @@ async fn main() -> anyhow::Result<()> {
                 let conds = Conditions { conditions: conds };
                 let format = Config {
                     timeout: Duration::from_millis(timeout),
-                    mode: Mode::Scanner { rate, output },
+                    mode: Mode::Scanner {
+                        workers,
+                        output,
+                        progress_bar,
+                    },
                     addrs: MasscanFormat::try_from(
                         File::open(input).expect("invalid masscan file"),
                     )?
@@ -259,13 +269,7 @@ async fn main() -> anyhow::Result<()> {
             }
         },
         None => {
-            if let Some(path) = args.config {
-                let file = File::open(path).expect("Invalid config file specified");
-                let format: Config = TomlFormat { file }.try_into()?;
-                format.run().await?;
-            } else {
-                bail!("You must specify a command or a config file. Run command with --help parameter for more information.");
-            }
+            bail!("You must specify a valid subcommand. Run with --help parameter for more information.");
         }
     }
     Ok(())

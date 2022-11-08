@@ -20,7 +20,7 @@ use std::panic;
 use std::time::Duration as StdDuration;
 use std::{net::IpAddr, sync::Arc};
 use tokio::{net::TcpStream, sync::RwLock};
-use webhook::{client::WebhookClient};
+use webhook::client::WebhookClient;
 
 use crate::{adapters::CCheckResponse, condition::Conditions, format::ccheck::Server};
 
@@ -35,28 +35,26 @@ pub struct Monitor {
 }
 impl Monitor {
     pub async fn ping(&self, server: usize) -> anyhow::Result<(CCheckResponse, Server)> {
-        let addr = self.addrs.read().await[server].clone();
+        let addr = self.addrs.read().await[server];
         // println!(
         //     "{} Pinging server {}",
         //     "::".blue().bold(),
         //     format!("{}:{}", addr.0, addr.1).cyan()
         // );
-        let ip_cloned = addr.0.clone();
         panic::set_hook(Box::new(move |info| {
-            eprintln!("panic!! info: {}, sv: {}:{}", info, ip_cloned, addr.1);
+            eprintln!("panic!! info: {}, sv: {}:{}", info, addr.0, addr.1);
         }));
-        let mut stream =
-            match tokio::time::timeout(self.timeout, TcpStream::connect(addr.clone())).await {
-                Ok(s) => match s {
-                    Ok(s) => s,
-                    Err(err) => {
-                        bail!(err);
-                    }
-                },
+        let mut stream = match tokio::time::timeout(self.timeout, TcpStream::connect(addr)).await {
+            Ok(s) => match s {
+                Ok(s) => s,
                 Err(err) => {
                     bail!(err);
                 }
-            };
+            },
+            Err(err) => {
+                bail!(err);
+            }
+        };
         let resp = match tokio::time::timeout(
             self.timeout,
             craftping::tokio::ping(&mut stream, &addr.0.to_string(), addr.1),
@@ -88,7 +86,7 @@ impl Monitor {
                                     &cresp
                                         .clone()
                                         .sample
-                                        .unwrap_or(vec![])
+                                        .unwrap_or_default()
                                         .iter()
                                         .fold(String::new(), |str, val| {
                                             format!("{}, {str}", val.name)
@@ -111,12 +109,16 @@ impl Monitor {
         bail!("Server does not match condtions")
     }
     pub async fn run(&self, exit_on_success: bool) -> anyhow::Result<()> {
-        println!("{} Monitoring {} servers", "::".blue().bold(), self.addrs.read().await.len().purple());
+        println!(
+            "{} Monitoring {} servers",
+            "::".blue().bold(),
+            self.addrs.read().await.len().purple()
+        );
         let mut spinner = Spinner::new(Spinners::Dots, "Monitoring servers", Color::Blue);
         loop {
             spinner.update_text("Monitoring servers");
             let mut join_handles = vec![];
-            
+
             for sv in 0..self.addrs.read().await.len() {
                 let self_clone = self.clone();
                 let jh = tokio::spawn(async move { self_clone.ping(sv).await });
@@ -128,12 +130,13 @@ impl Monitor {
             for jh in join_handles {
                 if let Ok(Ok(_)) = jh.await {
                     if exit_on_success {
-                        
                         exit = true
                     }
                 }
             }
-            if exit {break}
+            if exit {
+                break;
+            }
         }
         spinner.success("Done!");
         Ok(())
