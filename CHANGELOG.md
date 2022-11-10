@@ -1,3 +1,7 @@
+# 0.2.3
+- i hate life i hate life 
+- INCLUDE IPS IN THE FUCKING OUTPUT FILE
+
 # 0.2.2
 - 1mb != 1gb
 

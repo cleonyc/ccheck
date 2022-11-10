@@ -108,7 +108,7 @@ impl CCheckFileHandler {
         file.flush()?;
         Ok(Self { file, count: 0, writer: None , path})
     }
-    pub async fn write_resp(&mut self, resp: CCheckResponse) -> anyhow::Result<()> {
+    pub async fn write_resp(&mut self, resp: Server) -> anyhow::Result<()> {
         if self.writer.is_none() {
             self.writer = Some(BufWriter::with_capacity(1024 * 1000, self.file.try_clone()?))
         }

@@ -119,7 +119,7 @@ impl Scanner {
                                 .clone()
                                 .write()
                                 .await
-                                .write_resp(resp.0)
+                                .write_resp(resp.1)
                                 .await
                                 .unwrap();
                         }
